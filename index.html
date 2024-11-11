@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geotastic JSON converter</title>
+  <style>
+    #drop-area {
+      width: 100%;
+      height: 200px;
+      border: 2px dashed #333;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2em;
+      color: #555;
+      margin-top: 20px;
+    }
+    #drop-area.hover {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Convert JSON from map-making.app to CSV with panoID for import in Geotastic</h1>
+  <div id="drop-area">
+    Drag and drop a JSON file here
+  </div>
+  <script>
+    const dropArea = document.getElementById('drop-area');
+
+    // Prevent default behaviors for drag and drop events
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Highlight the drop area on dragover
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropArea.addEventListener(eventName, () => dropArea.classList.add('hover'), false);
+    });
+
+    // Unhighlight the drop area when drag leaves
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropArea.addEventListener(eventName, () => dropArea.classList.remove('hover'), false);
+    });
+
+    // Handle dropped files
+    dropArea.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+      const file = e.dataTransfer.files[0];
+      if (file && file.type === 'application/json') {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          const jsonContent = JSON.parse(event.target.result);
+          const csvContent = convertToCSV(jsonContent);
+          const blob = new Blob([csvContent], { type: 'text/csv' });
+          downloadCSV(csvContent, 'converted.csv');
+        };
+        reader.readAsText(file);
+      } else {
+        alert('Please drop a valid JSON file.');
+      }
+    }
+
+    // Function to convert JSON to CSV
+    function convertToCSV(data) {
+        // Define headers based on the expected CSV format
+        const headers = [
+            "id", "style", "lat", "lng", "code", "subCode", "wikiId", "title",
+            "pitch", "heading", "zoom", "radius", "panoId", "hideCompass",
+            "isLandmarkTip", "disallowTrekker", "imageUrl", "copyright", "active"
+        ];
+        
+        // Start the CSV string with the headers
+        let csv = headers.join(",") + "\n";
+        
+        // Iterate over each entry in `customCoordinates`
+        data.customCoordinates.forEach((coordinate, index) => {
+            // Define each field with default values or data from JSON
+            const row = [
+                index + 1, // id (You can replace it with actual IDs if available)
+                "streetview", // style
+                coordinate.lat, // latitude
+                coordinate.lng, // longitude
+                coordinate.countryCode || "za", // code (defaulting to "za")
+                coordinate.stateCode || "", // subCode
+                0, // wikiId
+                "", // title
+                coordinate.pitch, // pitch
+                coordinate.heading, // heading
+                coordinate.zoom, // zoom
+                0, // radius (set to 0 or another default if not provided in JSON)
+                coordinate.panoId, // panoId
+                0, // hideCompass (defaulting to 0)
+                0, // isLandmarkTip (defaulting to 0)
+                0, // disallowTrekker (defaulting to 0)
+                "", // imageUrl (defaulting to empty)
+                "", // copyright
+                1 // active (defaulting to 1)
+            ];
+            
+            // Add row to CSV string
+            csv += row.join(",") + "\n";
+        });
+        
+        return csv;
+    }
+    
+    // Function to automatically download the CSV file
+    function downloadCSV(csvContent, filename) {
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      // Clean up
+      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }    
+  </script>
+
+</body>
+</html>
